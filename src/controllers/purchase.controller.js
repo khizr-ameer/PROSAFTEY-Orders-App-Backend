@@ -247,76 +247,190 @@ exports.deletePurchaseOrder = async (req, res) => {
 };
 
 
-// Download PO CSV
+
 // Download PO Excel
 exports.downloadPurchaseCSV = async (req, res) => {
   try {
     const { id } = req.params;
 
     const po = await PurchaseOrder.findById(id);
-    if (!po) return res.status(404).json({ message: "Purchase order not found" });
+    if (!po) {
+      return res.status(404).json({ message: "Purchase order not found" });
+    }
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Purchase Order");
 
-    // Add headers
-    sheet.columns = [
-      { header: "PO Number", key: "poNumber", width: 25 },
-      { header: "Tracking Number", key: "trackingNumber", width: 20 },
-      { header: "Status", key: "status", width: 20 },
-      { header: "Invoice", key: "invoice", width: 25 },
-      { header: "Product Name", key: "productName", width: 30 },
-      { header: "Sizes", key: "sizes", width: 40 },
-      { header: "Product Image", key: "productImage", width: 40 },
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const normalizeSize = (s) => s.trim().toLowerCase();
+
+    /* =========================
+       PO HEADER SECTION
+    ========================= */
+    const headerRows = [
+      ["PO Number:", po.poNumber],
+      ["Tracking Number:", po.trackingNumber || ""],
+      ["Status:", po.status],
+      [
+        "Invoice:",
+        po.invoiceFile
+          ? { text: "View Invoice", hyperlink: `${baseUrl}/${po.invoiceFile}` }
+          : "—",
+      ],
     ];
 
-    // Make headers bold
-    sheet.getRow(1).eachCell((cell) => {
-      cell.font = { bold: true };
-    });
+    headerRows.forEach(([label, value]) => {
+      const row = sheet.addRow([label, value]);
 
-    // ======================
-    // Add data rows
-    // ======================
-    po.products.forEach((p, index) => {
-      // Combine sizes in one cell: S:50, M:25, L:25
-      const sizeText = p.sizes.map((s) => `${s.sizeName}:${s.quantity}`).join(", ");
-
-      // Hyperlink for product image
-      const imageLink = p.productImage
-        ? { text: "View Image", hyperlink: `${req.protocol}://${req.get("host")}/${p.productImage}` }
-        : "";
-
-      // Hyperlink for invoice (only first row)
-      const invoiceLink =
-        index === 0 && po.invoiceFile
-          ? { text: "View Invoice", hyperlink: `${req.protocol}://${req.get("host")}/${po.invoiceFile}` }
-          : "";
-
-      // Only show PO-level info in first row
-      sheet.addRow({
-        poNumber: index === 0 ? po.poNumber : "",
-        trackingNumber: index === 0 ? po.trackingNumber : "",
-        status: index === 0 ? po.status : "",
-        invoice: invoiceLink,
-        productName: p.productName,
-        sizes: sizeText,
-        productImage: imageLink,
-      });
-    });
-
-    // ======================
-    // Set alignment + wrap text
-    // ======================
-    sheet.eachRow((row) => {
       row.eachCell((cell) => {
-        cell.alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+        cell.alignment = { vertical: "middle" };
+      });
+
+      row.getCell(1).font = { bold: true };
+      row.getCell(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFEFEFEF" },
+      };
+    });
+
+    sheet.addRow([]);
+
+    /* =========================
+       PRODUCTS TITLE
+    ========================= */
+    const productsTitleRow = sheet.addRow(["Products"]);
+    productsTitleRow.getCell(1).font = { bold: true, size: 14 };
+    productsTitleRow.getCell(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFEFEFEF" },
+    };
+    productsTitleRow.getCell(1).border = {
+      top: { style: "thin" },
+      left: { style: "thin" },
+      bottom: { style: "thin" },
+      right: { style: "thin" },
+    };
+
+    sheet.addRow([]);
+
+    /* =========================
+       COLLECT UNIQUE SIZES
+    ========================= */
+    const sizeMap = new Map();
+
+    po.products.forEach((product) => {
+      product.sizes.forEach((s) => {
+        const key = normalizeSize(s.sizeName);
+        if (!sizeMap.has(key)) {
+          sizeMap.set(key, s.sizeName.trim());
+        }
       });
     });
 
-    // ======================
-    // Send file
-    // ======================
+    const sizeColumns = Array.from(sizeMap.values());
+
+    /* =========================
+       TABLE HEADER (ADD TOTAL QTY)
+    ========================= */
+    const tableHeaders = [
+      "Product Name",
+      ...sizeColumns,
+      "Total Qty",
+      "Product Image",
+    ];
+    sheet.addRow(tableHeaders);
+
+    const headerRow = sheet.getRow(sheet.rowCount);
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE0E0E0" },
+      };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+    });
+
+    /* =========================
+       PRODUCT ROWS (CALCULATE TOTAL)
+    ========================= */
+    po.products.forEach((product) => {
+      const rowData = [product.productName];
+      let totalQty = 0;
+
+      sizeColumns.forEach((displaySize) => {
+        const match = product.sizes.find(
+          (s) => normalizeSize(s.sizeName) === normalizeSize(displaySize)
+        );
+        const qty = match ? Number(match.quantity) : "";
+        rowData.push(qty);
+        if (qty) totalQty += Number(qty);
+      });
+
+      // Total Quantity Column
+      rowData.push(totalQty);
+
+      // Product Image
+      rowData.push(
+        product.productImage
+          ? {
+              text: "View Image",
+              hyperlink: `${baseUrl}/${product.productImage}`,
+            }
+          : ""
+      );
+
+      const row = sheet.addRow(rowData);
+
+      row.eachCell((cell, colNumber) => {
+        cell.alignment = {
+          vertical: "middle",
+          horizontal: colNumber === 1 ? "left" : "center",
+          wrapText: true,
+        };
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+
+        // Highlight Total Qty column
+        if (tableHeaders[colNumber - 1] === "Total Qty") {
+          cell.font = { bold: true };
+        }
+      });
+    });
+
+    /* =========================
+       AUTO COLUMN WIDTH
+    ========================= */
+    sheet.columns.forEach((column) => {
+      let maxLength = 10;
+      column.eachCell({ includeEmpty: true }, (cell) => {
+        const value = cell.value?.text || cell.value || "";
+        maxLength = Math.max(maxLength, value.toString().length);
+      });
+      column.width = maxLength + 4;
+    });
+
+    /* =========================
+       SEND FILE
+    ========================= */
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="${po.poNumber.replace(/ /g, "_")}.xlsx"`
@@ -330,6 +444,9 @@ exports.downloadPurchaseCSV = async (req, res) => {
     res.end();
   } catch (err) {
     console.error("Download PO Excel Error:", err);
-    res.status(500).json({ message: "Failed to download purchase order", error: err.message });
+    res.status(500).json({
+      message: "Failed to download purchase order",
+      error: err.message,
+    });
   }
 };
