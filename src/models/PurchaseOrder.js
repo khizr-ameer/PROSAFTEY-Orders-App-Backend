@@ -87,6 +87,13 @@ const purchaseOrderSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+
+    // ===== Track who updated status =====
+    statusUpdatedBy: {
+      email: String,
+      role: String, 
+    },
+    statusUpdatedAt: Date,
   },
   { timestamps: true }
 );

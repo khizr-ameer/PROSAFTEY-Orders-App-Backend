@@ -199,30 +199,42 @@ exports.updatePurchaseOrder = async (req, res) => {
 };
 
 // ===============================
-// UPDATE purchase status only
+// UPDATE Purchase Order Status ONLY
 // ===============================
 exports.updatePurchaseStatus = async (req, res) => {
   try {
-    const order = await PurchaseOrder.findByIdAndUpdate(
-      req.params.id,
-      { status: req.body.status },
-      { new: true }
-    );
+    const { status } = req.body;
 
-    if (!order) {
-      return res.status(404).json({
-        message: "Purchase order not found",
-      });
+    if (!status) {
+      return res.status(400).json({ message: "Status is required" });
     }
+
+    // Find the purchase order
+    const order = await PurchaseOrder.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ message: "Purchase order not found" });
+    }
+
+    // Update status and track who updated
+    order.status = status;
+    order.statusUpdatedBy = {
+      email: req.user.email, // from logged-in user
+      role: req.user.role,   // from logged-in user
+    };
+    order.statusUpdatedAt = new Date();
+
+    await order.save();
 
     res.json(order);
   } catch (err) {
+    console.error("Update purchase order status error:", err);
     res.status(500).json({
       message: "Failed to update purchase status",
       error: err.message,
     });
   }
 };
+
 
 // ===============================
 // DELETE purchase order
@@ -284,7 +296,7 @@ exports.downloadPurchaseCSV = async (req, res) => {
 
       row.eachCell((cell) => {
         cell.border = {
-          top: { style: "thin" },
+          top: { style: "thin" }, 
           left: { style: "thin" },
           bottom: { style: "thin" },
           right: { style: "thin" },

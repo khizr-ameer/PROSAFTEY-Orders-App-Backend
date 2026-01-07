@@ -113,17 +113,36 @@ exports.updateSampleOrder = async (req, res) => {
 // ===============================
 exports.updateSampleStatus = async (req, res) => {
   try {
-    const sample = await SampleOrder.findByIdAndUpdate(
-      req.params.id,
-      { status: req.body.status },
-      { new: true }
-    );
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ message: "Status is required" });
+    }
+
+    const sample = await SampleOrder.findById(req.params.id);
+    if (!sample) {
+      return res.status(404).json({ message: "Sample order not found" });
+    }
+
+    sample.status = status;
+    sample.statusUpdatedBy = {
+      email: req.user.email,
+      role: req.user.role,
+    };
+    sample.statusUpdatedAt = new Date();
+
+    await sample.save();
 
     res.json(sample);
   } catch (err) {
-    res.status(500).json({ message: "Server Error", error: err.message });
+    console.error("Update status error:", err);
+    res.status(500).json({
+      message: "Server Error",
+      error: err.message,
+    });
   }
 };
+
 
 // ===============================
 // DELETE Sample Order
