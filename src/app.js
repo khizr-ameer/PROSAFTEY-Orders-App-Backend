@@ -40,6 +40,10 @@ app.use("/api/clients", auth, require("./routes/client.routes"));
 app.use("/api/samples", auth, require("./routes/sample.routes"));
 app.use("/api/purchase-orders", auth, require("./routes/purchase.routes"));
 
+//Dasboard 
+app.use("/api/dashboard", auth, require("./routes/dashboardRoutes"));
+
+
 // ====================
 // 404 Handler
 // ====================
