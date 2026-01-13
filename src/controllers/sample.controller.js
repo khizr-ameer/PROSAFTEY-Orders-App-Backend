@@ -8,35 +8,58 @@ exports.createSampleOrder = async (req, res) => {
     const data = req.body;
 
     if (!data.sampleName || !data.clientId) {
-      return res.status(400).json({ message: "sampleName and clientId are required" });
+      return res
+        .status(400)
+        .json({ message: "sampleName and clientId are required" });
     }
+
+    // ===============================
+    // ✅ PRIORITY (NEW - SAFE DEFAULT)
+    // ===============================
+    data.priority = data.priority || "MEDIUM";
 
     // ===============================
     // Handle file uploads
     // ===============================
     if (req.files) {
       if (req.files.techPack) {
-        data.techPackFile = `uploads/${req.files.techPack[0].filename}`.replace(/\\/g, "/");
+        data.techPackFile = `uploads/${req.files.techPack[0].filename}`.replace(
+          /\\/g,
+          "/"
+        );
       }
       if (req.files.pattern) {
-        data.patternFile = `uploads/${req.files.pattern[0].filename}`.replace(/\\/g, "/");
+        data.patternFile = `uploads/${req.files.pattern[0].filename}`.replace(
+          /\\/g,
+          "/"
+        );
       }
       if (req.files.graphic) {
-        data.graphicFile = `uploads/${req.files.graphic[0].filename}`.replace(/\\/g, "/");
+        data.graphicFile = `uploads/${req.files.graphic[0].filename}`.replace(
+          /\\/g,
+          "/"
+        );
       }
     }
 
-    data.paymentReceived = data.paymentReceived ? Number(data.paymentReceived) : 0;
+    data.paymentReceived = data.paymentReceived
+      ? Number(data.paymentReceived)
+      : 0;
 
     // ===============================
     // Parse sizes safely
     // ===============================
     if (data.sizes) {
       try {
-        if (typeof data.sizes === "string") data.sizes = JSON.parse(data.sizes);
-        for (const key in data.sizes) data.sizes[key] = Number(data.sizes[key] || 0);
+        if (typeof data.sizes === "string")
+          data.sizes = JSON.parse(data.sizes);
+
+        for (const key in data.sizes)
+          data.sizes[key] = Number(data.sizes[key] || 0);
       } catch (err) {
-        return res.status(400).json({ message: "Invalid sizes format", error: err.message });
+        return res
+          .status(400)
+          .json({ message: "Invalid sizes format", error: err.message });
       }
     }
 
@@ -47,6 +70,7 @@ exports.createSampleOrder = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+
 
 // ===============================
 // GET all samples for a client
@@ -80,6 +104,13 @@ exports.updateSampleOrder = async (req, res) => {
     const updateData = req.body;
 
     // ===============================
+    // ✅ PRIORITY (NEW - OPTIONAL UPDATE)
+    // ===============================
+    if (updateData.priority) {
+      updateData.priority = updateData.priority;
+    }
+
+    // ===============================
     // Handle file uploads
     // ===============================
     if (req.files) {
@@ -99,7 +130,11 @@ exports.updateSampleOrder = async (req, res) => {
       updateData.paymentReceived = Number(updateData.paymentReceived);
     }
 
-    const updated = await SampleOrder.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    const updated = await SampleOrder.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
 
     res.json(updated);
   } catch (err) {

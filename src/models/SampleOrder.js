@@ -30,7 +30,15 @@ const sampleOrderSchema = new mongoose.Schema(
       default: "Tech Pack Received",
     },
 
-    // 🔹 NEW (audit info)
+      // 🔴🟡🟢 PRIORITY (NEW)
+      priority: {
+        type: String,
+        enum: ["LOW", "MEDIUM", "HIGH", "URGENT"],
+        default: "MEDIUM",
+        index: true, // 🔥 important for filtering & performance
+      },
+
+    // 🔹 Audit info
     statusUpdatedBy: {
       email: { type: String },
       role: { type: String }, // "staff" | "owner"
