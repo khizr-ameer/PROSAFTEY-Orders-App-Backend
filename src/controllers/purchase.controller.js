@@ -19,6 +19,15 @@ exports.createPurchaseOrder = async (req, res) => {
       data.paymentReceived = Number(data.paymentReceived) || 0;
     }
 
+    // ✅ Handle priority
+    if (data.priority) {
+      if (!["LOW", "MEDIUM", "HIGH", "URGENT"].includes(data.priority)) {
+        return res.status(400).json({ message: "Invalid priority value" });
+      }
+    } else {
+      data.priority = "MEDIUM"; // default
+    }
+
     // Handle invoice upload
     if (req.files?.invoice?.[0]) {
       data.invoiceFile = `uploads/${req.files.invoice[0].filename}`;
@@ -31,7 +40,7 @@ exports.createPurchaseOrder = async (req, res) => {
       });
     }
 
-    // Handle products, sizes, quantity & images
+    // Handle products, sizes, quantity, images & productDescription
     data.products = data.products.map((product, index) => {
       if (!product.productName) {
         throw new Error("Product name is required");
@@ -69,6 +78,8 @@ exports.createPurchaseOrder = async (req, res) => {
 
       return {
         productName: product.productName,
+        // ✅ NEW: productDescription
+        productDescription: product.productDescription || "",
         sizes,
         quantity: totalQuantity,
         productImage: req.files?.productImages?.[index]
@@ -87,6 +98,7 @@ exports.createPurchaseOrder = async (req, res) => {
     });
   }
 };
+
 
 // ===============================
 // GET all purchase orders by client
@@ -151,6 +163,14 @@ exports.updatePurchaseOrder = async (req, res) => {
       return res.status(404).json({ message: "Purchase order not found" });
     }
 
+    // ✅ Add priority update
+    if (data.priority) {
+      if (!["LOW", "MEDIUM", "HIGH", "URGENT"].includes(data.priority)) {
+        return res.status(400).json({ message: "Invalid priority value" });
+      }
+      po.priority = data.priority;
+    }
+
     // Update top-level fields
     po.poNumber = data.poNumber ?? po.poNumber;
     po.trackingNumber = data.trackingNumber ?? po.trackingNumber;
@@ -178,6 +198,8 @@ exports.updatePurchaseOrder = async (req, res) => {
 
         return {
           productName: product.productName ?? oldProduct.productName,
+          // ✅ Add productDescription support
+          productDescription: product.productDescription ?? oldProduct.productDescription ?? "",
           sizes,
           quantity,
           productImage: req.files?.productImages?.[index]
@@ -197,6 +219,7 @@ exports.updatePurchaseOrder = async (req, res) => {
     });
   }
 };
+
 
 // ===============================
 // UPDATE Purchase Order Status ONLY
@@ -294,6 +317,9 @@ exports.downloadPurchaseCSV = async (req, res) => {
     headerRows.forEach(([label, value]) => {
       const row = sheet.addRow([label, value]);
 
+      // Increase row height
+      row.height = 25;
+
       row.eachCell((cell) => {
         cell.border = {
           top: { style: "thin" }, 
@@ -301,15 +327,17 @@ exports.downloadPurchaseCSV = async (req, res) => {
           bottom: { style: "thin" },
           right: { style: "thin" },
         };
-        cell.alignment = { vertical: "middle" };
+        cell.alignment = { vertical: "middle", wrapText: true };
       });
 
-      row.getCell(1).font = { bold: true };
+      row.getCell(1).font = { bold: true, size: 12 };
       row.getCell(1).fill = {
         type: "pattern",
         pattern: "solid",
         fgColor: { argb: "FFEFEFEF" },
       };
+
+      row.getCell(2).font = { size: 12 };
     });
 
     sheet.addRow([]);
@@ -318,7 +346,8 @@ exports.downloadPurchaseCSV = async (req, res) => {
        PRODUCTS TITLE
     ========================= */
     const productsTitleRow = sheet.addRow(["Products"]);
-    productsTitleRow.getCell(1).font = { bold: true, size: 14 };
+    productsTitleRow.height = 30; // increase height
+    productsTitleRow.getCell(1).font = { bold: true, size: 16 };
     productsTitleRow.getCell(1).fill = {
       type: "pattern",
       pattern: "solid",
@@ -350,20 +379,20 @@ exports.downloadPurchaseCSV = async (req, res) => {
     const sizeColumns = Array.from(sizeMap.values());
 
     /* =========================
-       TABLE HEADER (ADD TOTAL QTY)
+       TABLE HEADER (ADD TOTAL QTY + DESCRIPTION)
     ========================= */
     const tableHeaders = [
       "Product Name",
+      "Product Description", // <-- added column
       ...sizeColumns,
       "Total Qty",
       "Product Image",
     ];
-    sheet.addRow(tableHeaders);
-
-    const headerRow = sheet.getRow(sheet.rowCount);
-    headerRow.eachCell((cell) => {
-      cell.font = { bold: true };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
+    const tableHeaderRow = sheet.addRow(tableHeaders);
+    tableHeaderRow.height = 28; // increase height
+    tableHeaderRow.eachCell((cell) => {
+      cell.font = { bold: true, size: 12 };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
       cell.fill = {
         type: "pattern",
         pattern: "solid",
@@ -381,7 +410,7 @@ exports.downloadPurchaseCSV = async (req, res) => {
        PRODUCT ROWS (CALCULATE TOTAL)
     ========================= */
     po.products.forEach((product) => {
-      const rowData = [product.productName];
+      const rowData = [product.productName, product.productDescription || ""];
       let totalQty = 0;
 
       sizeColumns.forEach((displaySize) => {
@@ -393,25 +422,21 @@ exports.downloadPurchaseCSV = async (req, res) => {
         if (qty) totalQty += Number(qty);
       });
 
-      // Total Quantity Column
       rowData.push(totalQty);
 
-      // Product Image
       rowData.push(
         product.productImage
-          ? {
-              text: "View Image",
-              hyperlink: `${baseUrl}/${product.productImage}`,
-            }
+          ? { text: "View Image", hyperlink: `${baseUrl}/${product.productImage}` }
           : ""
       );
 
       const row = sheet.addRow(rowData);
+      row.height = 25; // increase height
 
       row.eachCell((cell, colNumber) => {
         cell.alignment = {
           vertical: "middle",
-          horizontal: colNumber === 1 ? "left" : "center",
+          horizontal: colNumber <= 2 ? "left" : "center",
           wrapText: true,
         };
         cell.border = {
@@ -421,9 +446,10 @@ exports.downloadPurchaseCSV = async (req, res) => {
           right: { style: "thin" },
         };
 
-        // Highlight Total Qty column
         if (tableHeaders[colNumber - 1] === "Total Qty") {
-          cell.font = { bold: true };
+          cell.font = { bold: true, size: 12 };
+        } else {
+          cell.font = { size: 12 };
         }
       });
     });
@@ -437,7 +463,7 @@ exports.downloadPurchaseCSV = async (req, res) => {
         const value = cell.value?.text || cell.value || "";
         maxLength = Math.max(maxLength, value.toString().length);
       });
-      column.width = maxLength + 4;
+      column.width = maxLength + 6; // extra padding
     });
 
     /* =========================

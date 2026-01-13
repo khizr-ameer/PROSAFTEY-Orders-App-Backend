@@ -11,6 +11,12 @@ const productSchema = new mongoose.Schema({
     trim: true,
   },
 
+  // ✅ NEW: Product Description
+  productDescription: {
+    type: String,
+    trim: true,
+  },
+
   // Total quantity (auto-calculated from sizes in controller)
   quantity: {
     type: Number,
@@ -62,6 +68,13 @@ const purchaseOrderSchema = new mongoose.Schema(
       required: true,
     },
 
+    // ✅ NEW: Priority (same as Sample Orders)
+    priority: {
+      type: String,
+      enum: ["LOW", "MEDIUM", "HIGH", "URGENT"],
+      default: "MEDIUM",
+    },
+
     invoiceFile: {
       type: String,
     },
@@ -91,7 +104,7 @@ const purchaseOrderSchema = new mongoose.Schema(
     // ===== Track who updated status =====
     statusUpdatedBy: {
       email: String,
-      role: String, 
+      role: String,
     },
     statusUpdatedAt: Date,
   },
