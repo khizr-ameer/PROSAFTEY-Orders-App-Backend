@@ -281,6 +281,25 @@ exports.deletePurchaseOrder = async (req, res) => {
   }
 };
 
+//get all purchase orders
+
+exports.getAllPurchaseOrders = async (req, res) => {
+  try {
+    const { status, paymentPending } = req.query;
+    const filter = {};
+    
+    if (status) filter.status = status;
+    if (paymentPending === 'true') filter.paymentReceived = { $lt: 100 };
+    
+    const orders = await PurchaseOrder.find(filter)
+      .populate('clientId', 'name email company')
+      .sort({ createdAt: -1 });
+    
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch purchase orders", error: err.message });
+  }
+};
 
 
 // Download PO Excel

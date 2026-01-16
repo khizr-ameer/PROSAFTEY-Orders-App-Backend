@@ -5,6 +5,7 @@ const {
   createSampleOrder,
   getSamplesByClient,
   getSampleById,
+  getAllSamples,
   updateSampleOrder,
   updateSampleStatus,
   deleteSampleOrder
@@ -29,6 +30,9 @@ router.get("/client/:clientId", getSamplesByClient);
 
 // Get single sample
 router.get("/:id", getSampleById);
+
+//get all sample orders
+router.get("/", getAllSamples);
 
 // Update full sample with file uploads
 router.put(

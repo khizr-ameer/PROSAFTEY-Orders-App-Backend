@@ -97,6 +97,33 @@ exports.getSampleById = async (req, res) => {
 };
 
 // ===============================
+// get all sample orders
+// ===============================
+exports.getAllSamples = async (req, res) => {
+  try {
+    const { status, dueSoon } = req.query;
+    const filter = {};
+    
+    if (status) filter.status = status;
+    
+    if (dueSoon === 'true') {
+      const threeDaysLater = new Date();
+      threeDaysLater.setDate(threeDaysLater.getDate() + 3);
+      filter.productionDueDate = { $lte: threeDaysLater };
+      filter.status = { $ne: "Completed" };
+    }
+    
+    const samples = await SampleOrder.find(filter)
+      .populate('clientId', 'name email company')
+      .sort({ createdAt: -1 });
+    
+    res.json(samples);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch samples", error: err.message });
+  }
+};
+
+// ===============================
 // UPDATE Sample Order (files + data)
 // ===============================
 exports.updateSampleOrder = async (req, res) => {

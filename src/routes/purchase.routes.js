@@ -6,6 +6,7 @@ const {
   createPurchaseOrder,
   getPurchaseByClient,
   getPurchaseById,
+  getAllPurchaseOrders,
   updatePurchaseOrder,
   updatePurchaseStatus,
   deletePurchaseOrder,
@@ -30,6 +31,9 @@ router.get("/client/:clientId", getPurchaseByClient);
 
 // Get single purchase order
 router.get("/:id", getPurchaseById);
+
+// Get all purchase orders
+router.get("/", getAllPurchaseOrders);
 
 // Download CSV of a purchase order
 router.get("/:id/download-csv", downloadPurchaseCSV);
