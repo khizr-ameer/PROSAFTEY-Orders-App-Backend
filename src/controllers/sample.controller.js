@@ -19,26 +19,18 @@ exports.createSampleOrder = async (req, res) => {
     data.priority = data.priority || "MEDIUM";
 
     // ===============================
-    // Handle file uploads
+    // Handle file uploads - CLOUDINARY VERSION
     // ===============================
     if (req.files) {
+      // With Cloudinary, req.file.path contains the full URL
       if (req.files.techPack) {
-        data.techPackFile = `uploads/${req.files.techPack[0].filename}`.replace(
-          /\\/g,
-          "/"
-        );
+        data.techPackFile = req.files.techPack[0].path; // Full Cloudinary URL
       }
       if (req.files.pattern) {
-        data.patternFile = `uploads/${req.files.pattern[0].filename}`.replace(
-          /\\/g,
-          "/"
-        );
+        data.patternFile = req.files.pattern[0].path; // Full Cloudinary URL
       }
       if (req.files.graphic) {
-        data.graphicFile = `uploads/${req.files.graphic[0].filename}`.replace(
-          /\\/g,
-          "/"
-        );
+        data.graphicFile = req.files.graphic[0].path; // Full Cloudinary URL
       }
     }
 
@@ -124,7 +116,7 @@ exports.getAllSamples = async (req, res) => {
 };
 
 // ===============================
-// UPDATE Sample Order (files + data)
+// UPDATE Sample Order (files + data) - CLOUDINARY VERSION
 // ===============================
 exports.updateSampleOrder = async (req, res) => {
   try {
@@ -138,18 +130,18 @@ exports.updateSampleOrder = async (req, res) => {
     }
 
     // ===============================
-    // Handle file uploads
+    // Handle file uploads - CLOUDINARY VERSION
     // ===============================
     if (req.files) {
-      // These field names must match multer.fields in your route
+      // With Cloudinary, req.file.path contains the full URL
       if (req.files.techPackFile) {
-        updateData.techPackFile = `uploads/${req.files.techPackFile[0].filename}`.replace(/\\/g, "/");
+        updateData.techPackFile = req.files.techPackFile[0].path; // Full Cloudinary URL
       }
       if (req.files.patternFile) {
-        updateData.patternFile = `uploads/${req.files.patternFile[0].filename}`.replace(/\\/g, "/");
+        updateData.patternFile = req.files.patternFile[0].path; // Full Cloudinary URL
       }
       if (req.files.graphicFile) {
-        updateData.graphicFile = `uploads/${req.files.graphicFile[0].filename}`.replace(/\\/g, "/");
+        updateData.graphicFile = req.files.graphicFile[0].path; // Full Cloudinary URL
       }
     }
 
@@ -217,4 +209,3 @@ exports.deleteSampleOrder = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
-  

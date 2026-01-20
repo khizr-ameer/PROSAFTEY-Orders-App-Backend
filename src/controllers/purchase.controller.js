@@ -28,9 +28,9 @@ exports.createPurchaseOrder = async (req, res) => {
       data.priority = "MEDIUM"; // default
     }
 
-    // Handle invoice upload
+    // Handle invoice upload - CLOUDINARY VERSION
     if (req.files?.invoice?.[0]) {
-      data.invoiceFile = `uploads/${req.files.invoice[0].filename}`;
+      data.invoiceFile = req.files.invoice[0].path; // Full Cloudinary URL
     }
 
     // Validate products
@@ -82,8 +82,9 @@ exports.createPurchaseOrder = async (req, res) => {
         productDescription: product.productDescription || "",
         sizes,
         quantity: totalQuantity,
+        // CLOUDINARY VERSION - Full URL
         productImage: req.files?.productImages?.[index]
-          ? `uploads/${req.files.productImages[index].filename}`
+          ? req.files.productImages[index].path
           : null,
       };
     });
@@ -177,9 +178,9 @@ exports.updatePurchaseOrder = async (req, res) => {
     po.status = data.status ?? po.status;
     po.paymentReceived = data.paymentReceived ?? po.paymentReceived;
 
-    // Update invoice
+    // Update invoice - CLOUDINARY VERSION
     if (req.files?.invoice?.[0]) {
-      po.invoiceFile = `uploads/${req.files.invoice[0].filename}`;
+      po.invoiceFile = req.files.invoice[0].path; // Full Cloudinary URL
     }
 
     // Update products ONLY if provided
@@ -202,8 +203,9 @@ exports.updatePurchaseOrder = async (req, res) => {
           productDescription: product.productDescription ?? oldProduct.productDescription ?? "",
           sizes,
           quantity,
+          // CLOUDINARY VERSION - Full URL
           productImage: req.files?.productImages?.[index]
-            ? `uploads/${req.files.productImages[index].filename}`
+            ? req.files.productImages[index].path
             : oldProduct.productImage,
         };
       });
@@ -315,7 +317,8 @@ exports.downloadPurchaseCSV = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Purchase Order");
 
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    // CLOUDINARY VERSION - No need for baseUrl construction
+    // Cloudinary URLs are already complete
     const normalizeSize = (s) => s.trim().toLowerCase();
 
     /* =========================
@@ -328,7 +331,7 @@ exports.downloadPurchaseCSV = async (req, res) => {
       [
         "Invoice:",
         po.invoiceFile
-          ? { text: "View Invoice", hyperlink: `${baseUrl}/${po.invoiceFile}` }
+          ? { text: "View Invoice", hyperlink: po.invoiceFile } // Direct Cloudinary URL
           : "—",
       ],
     ];
@@ -443,9 +446,10 @@ exports.downloadPurchaseCSV = async (req, res) => {
 
       rowData.push(totalQty);
 
+      // CLOUDINARY VERSION - Direct URL
       rowData.push(
         product.productImage
-          ? { text: "View Image", hyperlink: `${baseUrl}/${product.productImage}` }
+          ? { text: "View Image", hyperlink: product.productImage } // Direct Cloudinary URL
           : ""
       );
 

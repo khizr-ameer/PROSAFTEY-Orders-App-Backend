@@ -1,32 +1,35 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("cloudinary").v2;
 
 // ====================
-// Ensure uploads folder exists (ROOT/uploads)
+// Configure Cloudinary
 // ====================
-const uploadDir = path.join(__dirname, "../../uploads");
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
 // ====================
-// Storage config
+// Storage config (Cloudinary)
 // ====================
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueName =
-      Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueName + path.extname(file.originalname));
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "factory-orders", // Your images will be in this folder on Cloudinary
+    allowed_formats: ["jpg", "jpeg", "png", "webp", "pdf", "doc", "docx"],
+    resource_type: "auto", // Handles images, PDFs, documents automatically
+    public_id: (req, file) => {
+      // Generate unique filename (same as before)
+      const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      return uniqueName;
+    },
   },
 });
 
 // ====================
-// File filter
+// File filter (same as before)
 // ====================
 const fileFilter = (req, file, cb) => {
   const allowedTypes = [
@@ -38,14 +41,12 @@ const fileFilter = (req, file, cb) => {
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ];
-
   if (!allowedTypes.includes(file.mimetype)) {
     return cb(
       new Error("Only images, PDF, and Word documents are allowed"),
       false
     );
   }
-
   cb(null, true);
 };
 
@@ -55,5 +56,5 @@ const fileFilter = (req, file, cb) => {
 module.exports = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 });
