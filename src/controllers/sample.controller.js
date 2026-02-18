@@ -14,9 +14,11 @@ exports.createSampleOrder = async (req, res) => {
     }
 
     // ===============================
-    // ✅ PRIORITY (NEW - SAFE DEFAULT)
+    // ✅ PRIORITY FIX - trim spaces and fallback to MEDIUM
     // ===============================
-    data.priority = data.priority || "MEDIUM";
+    const validPriorities = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+    const cleanedPriority = data.priority?.trim();
+    data.priority = validPriorities.includes(cleanedPriority) ? cleanedPriority : "MEDIUM";
 
     // ===============================
     // Handle file uploads - CLOUDINARY VERSION
@@ -123,10 +125,12 @@ exports.updateSampleOrder = async (req, res) => {
     const updateData = req.body;
 
     // ===============================
-    // ✅ PRIORITY (NEW - OPTIONAL UPDATE)
+    // ✅ PRIORITY FIX - trim spaces and validate on update too
     // ===============================
-    if (updateData.priority) {
-      updateData.priority = updateData.priority;
+    const validPriorities = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+    if (updateData.priority !== undefined) {
+      const cleanedPriority = updateData.priority?.trim();
+      updateData.priority = validPriorities.includes(cleanedPriority) ? cleanedPriority : "MEDIUM";
     }
 
     // ===============================
