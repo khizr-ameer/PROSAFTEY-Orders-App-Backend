@@ -17,11 +17,10 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: "factory-orders", // Your images will be in this folder on Cloudinary
-    allowed_formats: ["jpg", "jpeg", "png", "webp", "pdf", "doc", "docx"],
-    resource_type: "auto", // Handles images, PDFs, documents automatically
+    folder: "factory-orders",
+    allowed_formats: ["jpg", "jpeg", "png", "webp", "pdf", "doc", "docx", "xls", "xlsx", "csv"], // ✅ Added xls, xlsx, csv
+    resource_type: "auto",
     public_id: (req, file) => {
-      // Generate unique filename (same as before)
       const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
       return uniqueName;
     },
@@ -29,7 +28,7 @@ const storage = new CloudinaryStorage({
 });
 
 // ====================
-// File filter (same as before)
+// File filter
 // ====================
 const fileFilter = (req, file, cb) => {
   const allowedTypes = [
@@ -40,10 +39,14 @@ const fileFilter = (req, file, cb) => {
     "application/pdf",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",                                           // ✅ .xls
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  // ✅ .xlsx
+    "text/csv",                                                           // ✅ .csv (optional, remove if not needed)
   ];
+
   if (!allowedTypes.includes(file.mimetype)) {
     return cb(
-      new Error("Only images, PDF, and Word documents are allowed"),
+      new Error("Only images, PDF, Word, and Excel documents are allowed"), // ✅ Updated error message
       false
     );
   }
