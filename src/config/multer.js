@@ -16,14 +16,17 @@ cloudinary.config({
 // ====================
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: "factory-orders",
-    allowed_formats: ["jpg", "jpeg", "png", "webp", "pdf", "doc", "docx", "xls", "xlsx", "csv"], // ✅ Added xls, xlsx, csv
-    resource_type: "auto",
-    public_id: (req, file) => {
-      const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      return uniqueName;
-    },
+  params: async (req, file) => {
+    // Images and PDFs can use "auto", everything else must be "raw"
+    const isImage = ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.mimetype);
+    const isPDF = file.mimetype === "application/pdf";
+    const resourceType = isImage || isPDF ? "auto" : "raw"; // ✅ Excel/Word/CSV go as "raw"
+
+    return {
+      folder: "factory-orders",
+      resource_type: resourceType,
+      public_id: Date.now() + "-" + Math.round(Math.random() * 1e9),
+    };
   },
 });
 
@@ -37,16 +40,16 @@ const fileFilter = (req, file, cb) => {
     "image/png",
     "image/webp",
     "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-excel",                                           // ✅ .xls
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  // ✅ .xlsx
-    "text/csv",                                                           // ✅ .csv (optional, remove if not needed)
+    "application/msword",                                                          // .doc
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",    // .docx
+    "application/vnd.ms-excel",                                                   // .xls
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",          // .xlsx
+    "text/csv",                                                                   // .csv
   ];
 
   if (!allowedTypes.includes(file.mimetype)) {
     return cb(
-      new Error("Only images, PDF, Word, and Excel documents are allowed"), // ✅ Updated error message
+      new Error("Only images, PDF, Word, and Excel documents are allowed"),
       false
     );
   }
