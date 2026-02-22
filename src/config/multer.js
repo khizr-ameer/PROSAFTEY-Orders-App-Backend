@@ -1,6 +1,7 @@
 const multer = require("multer");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("cloudinary").v2;
+const path = require("path"); // ✅ needed to extract extension
 
 // ====================
 // Configure Cloudinary
@@ -17,15 +18,18 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
-    // Images and PDFs can use "auto", everything else must be "raw"
     const isImage = ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.mimetype);
     const isPDF = file.mimetype === "application/pdf";
-    const resourceType = isImage || isPDF ? "auto" : "raw"; // ✅ Excel/Word/CSV go as "raw"
+    const resourceType = isImage || isPDF ? "auto" : "raw";
+
+    // ✅ Preserve the original file extension in the public_id
+    const ext = path.extname(file.originalname).toLowerCase(); // e.g. ".xlsx"
+    const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9) + ext;
 
     return {
       folder: "factory-orders",
       resource_type: resourceType,
-      public_id: Date.now() + "-" + Math.round(Math.random() * 1e9),
+      public_id: uniqueName, // ✅ now saves as e.g. "1740234567-123456789.xlsx"
     };
   },
 });
